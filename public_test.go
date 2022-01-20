@@ -70,6 +70,38 @@ func (p *PublicTestSuite) TestBuildJavaEdition() {
 	}
 }
 
+func (p *PublicTestSuite) TestBuildRelease() {
+	// -- Given
+	//
+	given := new(edition.JavaEdition)
+	edition.JavaEditionBasePath = p.Server.URL
+	p.Docker.On("Build", ".", docker.BuildSpec{
+		Tags: []string{
+			"hfcr.io:1.18.1-java-17",
+			"hfcr.io:1.18.1",
+		},
+		BuildArgs: map[string]string{
+			"ARTIFACT_URL": "https://launcher.mojang.com/v1/objects/125e5adf40c659fd3bce3e66e67a16bb49ecc1b9/server.jar",
+			"VERSION":      "1.18.1",
+			"VERSION_URL":  p.Server.URL + "/wiki/Java_Edition" + "_1.18.1",
+			"TAG":          "17-alpine",
+		},
+	}).Return(nil)
+
+	p.Docker.On("Push", "hfcr.io:1.18.1-java-17").Return(nil)
+	p.Docker.On("Push", "hfcr.io:1.18.1").Return(nil)
+
+	// -- When
+	//
+	err := p.Minecrafter.BuildRelease(given, "1.18.1")
+
+	// -- Then
+	//
+	if p.NoError(err) {
+		p.Docker.AssertExpectations(p.T())
+	}
+}
+
 var serverIndexResponse = []byte("hello world\n")
 
 func newTestServer() *httptest.Server {
