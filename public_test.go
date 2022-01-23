@@ -1,6 +1,7 @@
 package minecrafter
 
 import (
+	"github.com/Masterminds/semver/v3"
 	"github.com/gocolly/colly/v2"
 	"github.com/hostfactor/minecrafter/docker"
 	"github.com/hostfactor/minecrafter/edition"
@@ -41,7 +42,7 @@ func (p *PublicTestSuite) SetupTest() {
 func (p *PublicTestSuite) TestBuildJavaEdition() {
 	// -- Given
 	//
-	given := new(edition.JavaEdition)
+	given := new(edition.Java)
 	edition.JavaEditionBasePath = p.Server.URL
 	p.Docker.On("Build", ".", docker.BuildSpec{
 		Tags: []string{
@@ -70,10 +71,28 @@ func (p *PublicTestSuite) TestBuildJavaEdition() {
 	}
 }
 
+func (p *PublicTestSuite) TestBuildJavaEditionWithConstraint() {
+	// -- Given
+	//
+	given := new(edition.Java)
+	edition.JavaEditionBasePath = p.Server.URL
+	con, _ := semver.NewConstraint("> 1.18.1")
+
+	// -- When
+	//
+	err := p.Minecrafter.BuildEdition(given, WithSemverConstraint(con))
+
+	// -- Then
+	//
+	if p.NoError(err) {
+		p.Docker.AssertExpectations(p.T())
+	}
+}
+
 func (p *PublicTestSuite) TestBuildRelease() {
 	// -- Given
 	//
-	given := new(edition.JavaEdition)
+	given := new(edition.Java)
 	edition.JavaEditionBasePath = p.Server.URL
 	p.Docker.On("Build", ".", docker.BuildSpec{
 		Tags: []string{

@@ -10,8 +10,8 @@ import (
 )
 
 type Interface interface {
-	BuildEdition(ed edition.Edition) error
-	BuildRelease(ed edition.Edition, version string) error
+	BuildEdition(ed edition.Edition, opts ...BuildOpt) error
+	BuildRelease(ed edition.Edition, version string, opts ...BuildOpt) error
 }
 
 func New(registries []string) Interface {
@@ -28,14 +28,19 @@ type impl struct {
 	Registries []string
 }
 
-func (i *impl) BuildEdition(ed edition.Edition) error {
+func (i *impl) BuildEdition(ed edition.Edition, opts ...BuildOpt) error {
+	o := &buildOpts{}
+	for _, v := range opts {
+		o = v(*o)
+	}
+
 	i.Collector.OnHTML("table.wikitable td a[href]", func(element *colly.HTMLElement) {
 		version := utils.SemverRegex.FindString(element.Text)
 		if version == "" {
 			return
 		}
 
-		err := i.buildRelease(element.Request, ed, version)
+		err := i.buildRelease(element.Request, ed, version, o)
 		if err != nil {
 			panic(err.Error())
 		}
@@ -44,21 +49,31 @@ func (i *impl) BuildEdition(ed edition.Edition) error {
 	return i.Collector.Visit(ed.GetVersionListURL())
 }
 
-func (i *impl) BuildRelease(ed edition.Edition, version string) error {
-	return i.buildRelease(i.Collector, ed, version)
+func (i *impl) BuildRelease(ed edition.Edition, version string, opts ...BuildOpt) error {
+	o := &buildOpts{}
+	for _, v := range opts {
+		o = v(*o)
+	}
+	return i.buildRelease(i.Collector, ed, version, o)
 }
 
-func (i *impl) buildRelease(v crawler.Visitor, ed edition.Edition, version string) error {
+func (i *impl) buildRelease(v crawler.Visitor, ed edition.Edition, version string, opts *buildOpts) error {
 	i.Collector.OnHTML(`a[href].external.text`, func(e *colly.HTMLElement) {
-		i.buildReleaseForElement(e, ed)
+		i.buildReleaseForElement(e, ed, opts)
 	})
 	return v.Visit(ed.GenVersionURL(version))
 }
 
-func (i *impl) buildReleaseForElement(e *colly.HTMLElement, ed edition.Edition) {
+func (i *impl) buildReleaseForElement(e *colly.HTMLElement, ed edition.Edition, opts *buildOpts) {
 	release := ed.ParseRelease(e)
 	if release == nil {
 		return
+	}
+
+	if opts.Constraint != nil {
+		if !opts.Constraint.Check(release.Version) {
+			return
+		}
 	}
 
 	toPush := make([]string, 0, len(ed.GetTagVariations()))
@@ -79,7 +94,7 @@ func (i *impl) buildReleaseForElement(e *colly.HTMLElement, ed edition.Edition) 
 
 		buildArgs := map[string]string{
 			"ARTIFACT_URL": release.ArtifactURL,
-			"VERSION":      release.Version,
+			"VERSION":      release.Version.String(),
 			"VERSION_URL":  e.Request.URL.String(),
 			"TAG":          v.Tag,
 		}

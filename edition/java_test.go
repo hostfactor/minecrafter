@@ -1,6 +1,7 @@
 package edition
 
 import (
+	"github.com/Masterminds/semver/v3"
 	"github.com/stretchr/testify/suite"
 	"testing"
 )
@@ -18,7 +19,7 @@ type tagVariationTest struct {
 func (j *JavaTestSuite) TestGetTagVariationsJava16() {
 	// -- Given
 	//
-	given := new(JavaEdition)
+	given := new(Java)
 
 	// -- When
 	//
@@ -38,15 +39,16 @@ func (j *JavaTestSuite) TestGetTagVariationsJava16() {
 	}
 
 	for _, v := range tests {
-		j.Equal(v.ShouldSkip, given.java16Skip(v.Version, "16-alpine"), v.Version)
-		j.Equal(v.ShouldDefault, given.java16IsDefault(v.Version, "16-alpine"), v.Version)
+		ver := semver.MustParse(v.Version)
+		j.Equal(v.ShouldSkip, given.java16Skip(ver, "16-alpine"), v.Version)
+		j.Equal(v.ShouldDefault, given.java16IsDefault(ver, "16-alpine"), v.Version)
 	}
 }
 
 func (j *JavaTestSuite) TestGetTagVariationsJava11() {
 	// -- Given
 	//
-	given := new(JavaEdition)
+	given := new(Java)
 
 	// -- When
 	//
@@ -66,15 +68,16 @@ func (j *JavaTestSuite) TestGetTagVariationsJava11() {
 	}
 
 	for _, v := range tests {
-		j.Equal(v.ShouldSkip, given.java11Skip(v.Version, "11-jre-slim"), v.Version)
-		j.Equal(v.ShouldDefault, given.java11IsDefault(v.Version, "11-jre-slim"), v.Version)
+		ver := semver.MustParse(v.Version)
+		j.Equal(v.ShouldSkip, given.java11Skip(ver, "11-jre-slim"), v.Version)
+		j.Equal(v.ShouldDefault, given.java11IsDefault(ver, "11-jre-slim"), v.Version)
 	}
 }
 
 func (j *JavaTestSuite) TestGetTagVariationsJava8() {
 	// -- Given
 	//
-	given := new(JavaEdition)
+	given := new(Java)
 
 	// -- When
 	//
@@ -94,8 +97,9 @@ func (j *JavaTestSuite) TestGetTagVariationsJava8() {
 	}
 
 	for _, v := range tests {
-		j.Equal(v.ShouldSkip, given.java8Skip(v.Version, "8-jre-slim"), v.Version)
-		j.Equal(v.ShouldDefault, given.java8IsDefault(v.Version, "8-jre-slim"), v.Version)
+		ver := semver.MustParse(v.Version)
+		j.Equal(v.ShouldSkip, given.java8Skip(ver, "8-jre-slim"), v.Version)
+		j.Equal(v.ShouldDefault, given.java8IsDefault(ver, "8-jre-slim"), v.Version)
 	}
 }
 

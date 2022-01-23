@@ -1,6 +1,7 @@
 package crawler
 
 import (
+	"github.com/Masterminds/semver/v3"
 	"github.com/gocolly/colly/v2"
 )
 
@@ -9,6 +10,6 @@ type ReleaseParser interface {
 }
 
 type Release struct {
-	Version     string
+	Version     *semver.Version
 	ArtifactURL string
 }

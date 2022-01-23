@@ -2,6 +2,7 @@ package docker
 
 import (
 	"fmt"
+	"github.com/Masterminds/semver/v3"
 	"os"
 	"os/exec"
 )
@@ -13,9 +14,9 @@ type TagVariation struct {
 	Skip        SkipFunc
 }
 
-type IsDefaultFunc func(version, tag string) bool
+type IsDefaultFunc func(version *semver.Version, tag string) bool
 
-type SkipFunc func(version, tag string) bool
+type SkipFunc func(version *semver.Version, tag string) bool
 
 type Interface interface {
 	Build(ctx string, spec BuildSpec) error

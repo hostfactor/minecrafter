@@ -26,7 +26,7 @@ import (
 func main() {
 	builder := minecrafter.New([]string{os.Getenv("GITHUB_REGISTRY")})
 
-	err := builder.BuildEdition(new(edition.JavaEdition))
+	err := builder.BuildEdition(new(edition.Java))
 	if err != nil {
 		panic(err.Error())
 	}
@@ -70,7 +70,7 @@ import (
 func main() {
 	builder := minecrafter.New([]string{os.Getenv("GITHUB_REGISTRY")})
 
-	err := builder.BuildRelease(new(edition.JavaEdition), "1.18.1")
+	err := builder.BuildRelease(new(edition.Java), "1.18.1")
 	if err != nil {
 		panic(err.Error())
 	}
