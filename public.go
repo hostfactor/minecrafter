@@ -42,7 +42,7 @@ func (i *impl) BuildEdition(ed edition.Edition, opts ...BuildOpt) error {
 
 		err := i.buildRelease(ed, version, false, o)
 		if err != nil {
-			panic(err.Error())
+			fmt.Println("Err:", err.Error(), "Failed to build release:", version, element.Attr("href"))
 		}
 	})
 
