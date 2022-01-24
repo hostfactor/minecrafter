@@ -3,7 +3,6 @@ package minecrafter
 import (
 	"fmt"
 	"github.com/gocolly/colly/v2"
-	"github.com/hostfactor/minecrafter/crawler"
 	"github.com/hostfactor/minecrafter/docker"
 	"github.com/hostfactor/minecrafter/edition"
 	"github.com/hostfactor/minecrafter/utils"
@@ -26,6 +25,7 @@ type impl struct {
 	Collector  *colly.Collector
 	Docker     docker.Interface
 	Registries []string
+	BuiltFirst bool
 }
 
 func (i *impl) BuildEdition(ed edition.Edition, opts ...BuildOpt) error {
@@ -40,7 +40,7 @@ func (i *impl) BuildEdition(ed edition.Edition, opts ...BuildOpt) error {
 			return
 		}
 
-		err := i.buildRelease(element.Request, ed, version, o)
+		err := i.buildRelease(ed, version, false, o)
 		if err != nil {
 			panic(err.Error())
 		}
@@ -54,17 +54,18 @@ func (i *impl) BuildRelease(ed edition.Edition, version string, opts ...BuildOpt
 	for _, v := range opts {
 		o = v(*o)
 	}
-	return i.buildRelease(i.Collector, ed, version, o)
+	return i.buildRelease(ed, version, true, o)
 }
 
-func (i *impl) buildRelease(v crawler.Visitor, ed edition.Edition, version string, opts *buildOpts) error {
-	i.Collector.OnHTML(`a[href].external.text`, func(e *colly.HTMLElement) {
-		i.buildReleaseForElement(e, ed, opts)
+func (i *impl) buildRelease(ed edition.Edition, version string, specificRelease bool, opts *buildOpts) error {
+	col := colly.NewCollector()
+	col.OnHTML(`a[href].external.text`, func(e *colly.HTMLElement) {
+		i.buildReleaseForElement(e, ed, specificRelease, opts)
 	})
-	return v.Visit(ed.GenVersionURL(version))
+	return col.Visit(ed.GenVersionURL(version))
 }
 
-func (i *impl) buildReleaseForElement(e *colly.HTMLElement, ed edition.Edition, opts *buildOpts) {
+func (i *impl) buildReleaseForElement(e *colly.HTMLElement, ed edition.Edition, specificRelease bool, opts *buildOpts) {
 	release := ed.ParseRelease(e)
 	if release == nil {
 		return
@@ -90,7 +91,11 @@ func (i *impl) buildReleaseForElement(e *colly.HTMLElement, ed edition.Edition, 
 			if v.IsDefault(release.Version, v.Tag) {
 				tags = append(tags, fmt.Sprintf("%s:%s", registry, release.Version))
 			}
+			if !specificRelease && !i.BuiltFirst {
+				tags = append(tags, fmt.Sprintf("%s:latest", registry))
+			}
 		}
+		i.BuiltFirst = true
 
 		buildArgs := map[string]string{
 			"ARTIFACT_URL": release.ArtifactURL,
