@@ -2,6 +2,7 @@ package minecrafter
 
 import (
 	"fmt"
+	"github.com/Masterminds/semver/v3"
 	"github.com/gocolly/colly/v2"
 	"github.com/hostfactor/minecrafter/docker"
 	"github.com/hostfactor/minecrafter/edition"
@@ -11,6 +12,7 @@ import (
 type Interface interface {
 	BuildEdition(ed edition.Edition, opts ...BuildOpt) error
 	BuildRelease(ed edition.Edition, version string, opts ...BuildOpt) error
+	WalkReleases(ed edition.Edition, walker VersionWalker, opts ...WalkReleasesOpt) error
 }
 
 func New(registries []string) Interface {
@@ -21,6 +23,8 @@ func New(registries []string) Interface {
 	}
 }
 
+type VersionWalker func(version string, element *colly.HTMLElement) error
+
 type impl struct {
 	Collector  *colly.Collector
 	Docker     docker.Interface
@@ -28,8 +32,8 @@ type impl struct {
 	BuiltFirst bool
 }
 
-func (i *impl) BuildEdition(ed edition.Edition, opts ...BuildOpt) error {
-	o := &buildOpts{}
+func (i *impl) WalkReleases(ed edition.Edition, walker VersionWalker, opts ...WalkReleasesOpt) error {
+	o := &walkReleasesOpts{}
 	for _, v := range opts {
 		o = v(*o)
 	}
@@ -40,13 +44,39 @@ func (i *impl) BuildEdition(ed edition.Edition, opts ...BuildOpt) error {
 			return
 		}
 
-		err := i.buildRelease(ed, version, false, o)
+		if o.Constraint != nil {
+			parsed, err := semver.NewVersion(version)
+			if err != nil {
+				return
+			}
+
+			if !o.Constraint.Check(parsed) {
+				return
+			}
+		}
+
+		err := walker(version, element)
 		if err != nil {
-			fmt.Println("Err:", err.Error(), "Failed to build release:", version, element.Attr("href"))
+			fmt.Println("Err:", err.Error(), "Failed to list version:", version, element.Attr("href"))
 		}
 	})
 
 	return i.Collector.Visit(ed.GetVersionListURL())
+}
+
+func (i *impl) BuildEdition(ed edition.Edition, opts ...BuildOpt) error {
+	o := &buildOpts{}
+	for _, v := range opts {
+		o = v(*o)
+	}
+
+	return i.WalkReleases(ed, func(version string, element *colly.HTMLElement) error {
+		err := i.buildRelease(ed, version, false)
+		if err != nil {
+			fmt.Println("Err:", err.Error(), "Failed to build release:", version, element.Attr("href"))
+		}
+		return err
+	}, WithWalkSemverConstraint(o.Constraint))
 }
 
 func (i *impl) BuildRelease(ed edition.Edition, version string, opts ...BuildOpt) error {
@@ -54,27 +84,21 @@ func (i *impl) BuildRelease(ed edition.Edition, version string, opts ...BuildOpt
 	for _, v := range opts {
 		o = v(*o)
 	}
-	return i.buildRelease(ed, version, true, o)
+	return i.buildRelease(ed, version, true)
 }
 
-func (i *impl) buildRelease(ed edition.Edition, version string, specificRelease bool, opts *buildOpts) error {
+func (i *impl) buildRelease(ed edition.Edition, version string, specificRelease bool) error {
 	col := colly.NewCollector()
 	col.OnHTML(`a[href].external.text`, func(e *colly.HTMLElement) {
-		i.buildReleaseForElement(e, ed, specificRelease, opts)
+		i.buildReleaseForElement(e, ed, specificRelease)
 	})
 	return col.Visit(ed.GenVersionURL(version))
 }
 
-func (i *impl) buildReleaseForElement(e *colly.HTMLElement, ed edition.Edition, specificRelease bool, opts *buildOpts) {
+func (i *impl) buildReleaseForElement(e *colly.HTMLElement, ed edition.Edition, specificRelease bool) {
 	release := ed.ParseRelease(e)
 	if release == nil {
 		return
-	}
-
-	if opts.Constraint != nil {
-		if !opts.Constraint.Check(release.Version) {
-			return
-		}
 	}
 
 	toPush := make([]string, 0, len(ed.GetTagVariations()))

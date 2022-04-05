@@ -150,6 +150,57 @@ func (p *PublicTestSuite) TestBuildRelease() {
 	}
 }
 
+func (p *PublicTestSuite) TestWalkVersionsJavaEditionWithConstraint() {
+	// -- Given
+	//
+	given := new(edition.Java)
+	edition.JavaEditionBasePath = p.Server.URL
+	expected := []string{
+		"1.19",
+	}
+	con, _ := semver.NewConstraint("> 1.18.1")
+	actual := make([]string, 0, len(expected))
+
+	// -- When
+	//
+	err := p.Minecrafter.WalkReleases(given, func(version string, _ *colly.HTMLElement) error {
+		actual = append(actual, version)
+		return nil
+	}, WithWalkSemverConstraint(con))
+
+	// -- Then
+	//
+	if p.NoError(err) {
+		p.Equal(expected, actual)
+	}
+}
+
+func (p *PublicTestSuite) TestWalkVersionsJavaEdition() {
+	// -- Given
+	//
+	given := new(edition.Java)
+	edition.JavaEditionBasePath = p.Server.URL
+	expected := []string{
+		"1.19",
+		"1.18.1",
+		"1.17.1",
+	}
+	actual := make([]string, 0, len(expected))
+
+	// -- When
+	//
+	err := p.Minecrafter.WalkReleases(given, func(version string, _ *colly.HTMLElement) error {
+		actual = append(actual, version)
+		return nil
+	})
+
+	// -- Then
+	//
+	if p.NoError(err) {
+		p.Equal(expected, actual)
+	}
+}
+
 var serverIndexResponse = []byte("hello world\n")
 
 func newTestServer() *httptest.Server {
