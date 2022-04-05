@@ -118,7 +118,7 @@ func (p *PublicTestSuite) TestBuildJavaEditionWithConstraint() {
 	}
 }
 
-func (p *PublicTestSuite) TestBuildRelease() {
+func (p *PublicTestSuite) TestBuildReleaseJavaEdition() {
 	// -- Given
 	//
 	given := new(edition.Java)
@@ -198,6 +198,63 @@ func (p *PublicTestSuite) TestWalkVersionsJavaEdition() {
 	//
 	if p.NoError(err) {
 		p.Equal(expected, actual)
+	}
+}
+
+func (p *PublicTestSuite) TestWalkVersionsBedrockEdition() {
+	// -- Given
+	//
+	given := new(edition.Bedrock)
+	expected := []string{
+		"1.18.30",
+		"1.18.12",
+		"1.18.11",
+		"1.18.10",
+		"1.18.2",
+	}
+	actual := make([]string, 0, len(expected))
+	con, _ := semver.NewConstraint("> 1.18.1, < 1.19")
+
+	// -- When
+	//
+	err := p.Minecrafter.WalkReleases(given, func(version string, _ *colly.HTMLElement) error {
+		actual = append(actual, version)
+		return nil
+	}, WithWalkSemverConstraint(con))
+
+	// -- Then
+	//
+	if p.NoError(err) {
+		p.Equal(expected, actual)
+	}
+}
+
+func (p *PublicTestSuite) TestBuildReleaseBedrockEdition() {
+	// -- Given
+	//
+	given := new(edition.Bedrock)
+	p.Docker.On("Build", ".", docker.BuildSpec{
+		Tags: []string{
+			"hfcr.io:1.18.2",
+		},
+		BuildArgs: map[string]string{
+			"ARTIFACT_URL": "https://minecraft.azureedge.net/bin-linux/bedrock-server-1.18.2.03.zip",
+			"VERSION":      "1.18.2",
+			"VERSION_URL":  given.GenVersionURL("1.18.2"),
+			"TAG":          "latest",
+		},
+	}).Return(nil)
+
+	p.Docker.On("Push", "hfcr.io:1.18.2").Return(nil)
+
+	// -- When
+	//
+	err := p.Minecrafter.BuildRelease(given, "1.18.2")
+
+	// -- Then
+	//
+	if p.NoError(err) {
+		p.Docker.AssertExpectations(p.T())
 	}
 }
 
