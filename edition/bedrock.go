@@ -19,12 +19,13 @@ func (b *Bedrock) ParseRelease(e *colly.HTMLElement) *crawler.Release {
 	if e.Text == "Linux" && path.Ext(e.Attr("href")) == ".zip" {
 		rawVer := utils.SemverRegex.FindString(e.Request.URL.Path)
 		value := utils.SemverRegex.FindString(e.Attr("href"))
-		v, err := semver.NewVersion(value)
+		v, err := semver.NewVersion(rawVer)
 		if err != nil {
 			return nil
 		}
 		return &crawler.Release{
 			Version:     v,
+			Value:       value,
 			Name:        rawVer,
 			ArtifactURL: e.Attr("href"),
 		}

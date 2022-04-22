@@ -25,6 +25,7 @@ func (j *Java) ParseRelease(e *colly.HTMLElement) *crawler.Release {
 		return &crawler.Release{
 			Version:     v,
 			Name:        rawVer,
+			Value:       rawVer,
 			ArtifactURL: e.Attr("href"),
 		}
 	}

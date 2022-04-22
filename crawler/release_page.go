@@ -10,10 +10,13 @@ type ReleaseParser interface {
 }
 
 type Release struct {
-	// The value for the release.
+	// The semver Parsed Name.
 	Version *semver.Version
 
-	// The human-readable name for the release.
+	// The Value used within the edition. Sometimes the Name and the value used internally can be different,
+	Value string
+
+	// The human-readable name for the release. This will often be a semver e.g. 1.18.1.
 	Name string
 
 	ArtifactURL string
