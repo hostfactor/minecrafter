@@ -18,12 +18,14 @@ type Bedrock struct {
 func (b *Bedrock) ParseRelease(e *colly.HTMLElement) *crawler.Release {
 	if e.Text == "Linux" && path.Ext(e.Attr("href")) == ".zip" {
 		rawVer := utils.SemverRegex.FindString(e.Request.URL.Path)
-		v, err := semver.NewVersion(rawVer)
+		value := utils.SemverRegex.FindString(e.Attr("href"))
+		v, err := semver.NewVersion(value)
 		if err != nil {
 			return nil
 		}
 		return &crawler.Release{
 			Version:     v,
+			Name:        rawVer,
 			ArtifactURL: e.Attr("href"),
 		}
 	}
