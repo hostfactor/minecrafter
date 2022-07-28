@@ -35,7 +35,9 @@ type impl struct {
 }
 
 func (i *impl) FetchRelease(ed edition.Edition, version string) (*crawler.Release, *colly.HTMLElement, error) {
-	col := colly.NewCollector()
+	col := colly.NewCollector(
+		colly.UserAgent("Mozilla/5.0"),
+	)
 	var release *crawler.Release
 	var ele *colly.HTMLElement
 	col.OnHTML(`a[href].external.text`, func(e *colly.HTMLElement) {
